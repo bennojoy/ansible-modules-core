@@ -201,6 +201,10 @@ def get_volume(module, ec2):
     name = module.params.get('name')
     id = module.params.get('id')
     zone = module.params.get('zone')
+    volume_size = module.params.get('volume_size')
+    iops = module.params.get('iops')
+    encrypted = module.params.get('encrypted')
+    snapshot = module.params.get('snapshot')
     filters = {}
     volume_ids = None
     if zone:
@@ -209,6 +213,14 @@ def get_volume(module, ec2):
         filters = {'tag:Name': name}
     if id:
         volume_ids = [id]
+    if volume_size:
+        filters['size'] = volume_size
+    if encrypted:
+        filters['encrypted'] = encrypted
+    if snapshot:
+        filters['snapshot-id'] = snapshot
+    if iops:
+        filters['volume-type'] = 'io1'
     try:
         vols = ec2.get_all_volumes(volume_ids=volume_ids, filters=filters)
     except boto.exception.BotoServerError, e:
@@ -222,9 +234,12 @@ def get_volume(module, ec2):
             module.fail_json(msg=msg)
         else:
             return None
-    if len(vols) > 1:
+    if len(vols) > 1 and name:
         module.fail_json(msg="Found more than one volume in zone (if specified) with name: %s" % name)
-    return vols[0]
+    elif len(vols) == 1 and name:
+        return vols[0]
+    else:
+        return None
 
 def get_volumes(module, ec2):
     instance = module.params.get('instance')
