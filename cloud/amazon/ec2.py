@@ -507,12 +507,16 @@ except ImportError:
 def find_running_instances_by_count_tag(module, ec2, count_tag, zone=None):
 
     # get reservations for instances that match tag(s) and are running
-    reservations = get_reservations(module, ec2, tags=count_tag, state="running", zone=zone)
-
+    state = module.params.get('state')
+    if state not in ['running', 'stopped']:
+        state = None
+    reservations = get_reservations(module, ec2, tags=count_tag, state=state, zone=zone)
     instances = []
     for res in reservations:
         if hasattr(res, 'instances'):
             for inst in res.instances:
+                if inst.state == 'terminated':
+                    continue
                 instances.append(inst) 
                 
     return reservations, instances
@@ -700,7 +704,6 @@ def enforce_count(module, ec2, vpc):
     checkmode = False
     instance_dict_array = []
     changed_instance_ids = None
-
     if len(instances) == exact_count:
         changed = False
     elif len(instances) < exact_count:
